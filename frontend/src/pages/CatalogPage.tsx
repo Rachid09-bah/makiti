@@ -1,60 +1,95 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../store/cart';
 import ProductCard from '../components/ProductCard';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ProductSkeleton from '../components/ProductSkeleton';
+import { useSearch } from '../store/search';
+
 
 interface Product {
   _id: string;
   title: string;
   price: number;
   images?: string[];
+  categoryId?: string;
 }
 
-async function fetchProducts() {
-  const res = await api.get('/products');
+interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+}
+
+async function fetchProducts(categoryId?: string) {
+  const params = categoryId ? { categoryId } : {};
+  const res = await api.get('/products', { params });
   return res.data as { items: Product[]; total: number };
 }
 
-export default function CatalogPage() {
-  const { data, isLoading, isError, error } = useQuery({ queryKey: ['products'], queryFn: fetchProducts });
-  const addItem = useCart((s) => s.addItem);
-  const cartItems = useCart((s) => s.items);
-  const removeItem = useCart((s) => s.removeItem);
+async function fetchCategories() {
+  const res = await api.get('/categories');
+  return res.data as Category[];
+}
 
+export default function CatalogPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [q, setQ] = useState('');
+  const { query: globalQuery } = useSearch();
   const [priceMin, setPriceMin] = useState<string>('');
   const [priceMax, setPriceMax] = useState<string>('');
   const [sort, setSort] = useState<'new' | 'priceAsc' | 'priceDesc'>('new');
 
-  const categories = [
-    'Leppi & Tenues',
-    'Bazin & Tissus',
-    'Chaussures',
-    'Artisanat & Décoration',
-    'Bijoux & Accessoires',
-    'Cosmétiques naturels',
-    'Épices & Agroalimentaire',
-    'Paniers & Vannerie'
-  ];
+  // Lire les paramètres depuis l'URL
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category');
+    const queryFromUrl = searchParams.get('q');
+    if (categoryFromUrl) {
+      setSelectedCategoryId(categoryFromUrl);
+    }
+    if (queryFromUrl) {
+      setQ(queryFromUrl);
+    }
+  }, [searchParams]);
+
+  // Filtrer par lettre
+  const letterFilter = searchParams.get('letter');
+
+  const { data, isLoading, isError, error } = useQuery({ 
+    queryKey: ['products', selectedCategoryId], 
+    queryFn: () => fetchProducts(selectedCategoryId || undefined)
+  });
+  
+  const { data: categories = [] } = useQuery({ 
+    queryKey: ['categories'], 
+    queryFn: fetchCategories 
+  });
+
+  const addItem = useCart((s) => s.addItem);
+  const cartItems = useCart((s) => s.items);
+  const removeItem = useCart((s) => s.removeItem);
 
   const items = data?.items || [];
 
   const filteredSorted = useMemo(() => {
     const min = priceMin ? Number(priceMin) : undefined;
     const max = priceMax ? Number(priceMax) : undefined;
+    const searchQuery = globalQuery || q; // Utiliser la recherche globale en priorité
     let arr = items.filter(p => {
-      const matchQ = q ? p.title.toLowerCase().includes(q.toLowerCase()) : true;
+      const matchQ = searchQuery ? p.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
       const matchMin = min != null ? p.price >= min : true;
       const matchMax = max != null ? p.price <= max : true;
-      return matchQ && matchMin && matchMax;
+      const matchLetter = letterFilter ? p.title.toLowerCase().startsWith(letterFilter.toLowerCase()) : true;
+      return matchQ && matchMin && matchMax && matchLetter;
     });
     if (sort === 'priceAsc') arr = arr.slice().sort((a,b) => a.price - b.price);
     if (sort === 'priceDesc') arr = arr.slice().sort((a,b) => b.price - a.price);
     return arr;
-  }, [items, q, priceMin, priceMax, sort]);
+  }, [items, q, globalQuery, priceMin, priceMax, sort, letterFilter]);
 
   const inCart = (id: string) => !!cartItems.find(it => it.id === id);
   const handleAddToCart = (p: Product) => addItem({ id: p._id, title: p.title, image: p.images?.[0], price: p.price, qty: 1 });
@@ -62,26 +97,9 @@ export default function CatalogPage() {
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-4">Catalogue</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <aside className="space-y-3">
-            <div className="bg-white rounded-xl border border-slate-200 h-48" />
-            <div className="bg-white rounded-xl border border-slate-200 h-56" />
-          </aside>
-          <div className="lg:col-span-3 space-y-3">
-            <div className="bg-white rounded-xl border border-slate-200 h-14" />
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="h-48 bg-slate-100" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 bg-slate-100 rounded w-4/5" />
-                    <div className="h-4 bg-slate-100 rounded w-2/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="flex items-center justify-center min-h-[400px] space-y-4 flex-col">
+          <LoadingSpinner size="lg" />
+          <p className="text-slate-600">Chargement du catalogue...</p>
         </div>
       </div>
     );
@@ -105,13 +123,27 @@ export default function CatalogPage() {
           <div className="bg-white border border-slate-200 rounded-xl p-3">
             <h3 className="font-semibold mb-2">Catégories</h3>
             <nav className="grid gap-2">
+              <button
+                onClick={() => setSelectedCategoryId('')}
+                className={`text-left border px-3 py-2 rounded-lg ${
+                  selectedCategoryId === '' 
+                    ? 'bg-orange-50 border-orange-200 text-orange-800' 
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
+                }`}
+              >
+                Toutes les catégories
+              </button>
               {categories.map((c) => (
                 <button
-                  key={c}
-                  onClick={() => setQ(c)}
-                  className="text-left bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 px-3 py-2 rounded-lg"
+                  key={c._id}
+                  onClick={() => setSelectedCategoryId(c._id)}
+                  className={`text-left border px-3 py-2 rounded-lg ${
+                    selectedCategoryId === c._id 
+                      ? 'bg-orange-50 border-orange-200 text-orange-800' 
+                      : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
+                  }`}
                 >
-                  {c}
+                  {c.name}
                 </button>
               ))}
             </nav>
@@ -155,15 +187,20 @@ export default function CatalogPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredSorted.map((p) => (
                 <div key={p._id} className="space-y-2">
-                  <ProductCard
-                    image={p.images?.[0] || 'https://images.unsplash.com/photo-1544117519-31a4b719223d?q=80&w=1200&auto=format&fit=crop'}
-                    badge="Produit local"
-                    title={p.title}
-                    price={p.price}
-                    actionLabel={inCart(p._id) ? 'Retirer du panier' : 'Ajouter au panier'}
-                    onAction={() => (inCart(p._id) ? removeItem(p._id) : handleAddToCart(p))}
-                  />
-                  <Link to={`/product/${p._id}`} className="inline-flex justify-center w-full px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-sm">Voir plus</Link>
+                  <Link to={`/product/${p._id}`} style={{ textDecoration: 'none' }}>
+                    <ProductCard
+                      image={p.images?.[0] || 'https://images.unsplash.com/photo-1544117519-31a4b719223d?q=80&w=1200&auto=format&fit=crop'}
+                      badge="Produit local"
+                      title={p.title}
+                      price={p.price}
+                      actionLabel={inCart(p._id) ? 'Retirer du panier' : 'Ajouter au panier'}
+                      onAction={(e) => {
+                        e?.preventDefault();
+                        e?.stopPropagation();
+                        inCart(p._id) ? removeItem(p._id) : handleAddToCart(p);
+                      }}
+                    />
+                  </Link>
                 </div>
               ))}
             </div>

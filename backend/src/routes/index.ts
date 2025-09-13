@@ -12,6 +12,7 @@ import adminMonitoringRouter from './admin';
 import supportRouter from './support.routes';
 import siteRouter from './site.routes';
 import mailRouter from './mail.routes';
+import categoriesRouter from './categories.routes';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use('/payments', paymentsRouter);
 router.use('/products', productsRouter);
 router.use('/orders', ordersRouter);
 router.use('/users', usersRouter);
+router.use('/categories', categoriesRouter);
 router.use('/admin', adminRouter);
 router.use('/admin/monitoring', adminMonitoringRouter);
 router.use('/support', supportRouter);

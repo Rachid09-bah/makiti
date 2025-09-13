@@ -6,7 +6,7 @@ export type ProductCardProps = {
   title: string;
   price: number | string;
   actionLabel?: string; // Par défaut: 'Acheter maintenant'
-  onAction?: () => void;
+  onAction?: (e?: React.MouseEvent) => void;
   className?: string;
 };
 
@@ -80,7 +80,11 @@ export default function ProductCard({
       <div className="p-4 pt-0 flex items-center gap-3">
         <button
           type="button"
-          onClick={onAction}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAction?.(e);
+          }}
           disabled={!onAction}
           className="flex-1 inline-flex justify-center items-center gap-2 rounded-lg bg-gradient-to-b from-orange-400 to-orange-500 text-white font-medium px-4 py-2.5 hover:from-orange-500 hover:to-orange-600 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
           style={{ willChange: 'transform, box-shadow' }}

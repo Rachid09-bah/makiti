@@ -1,6 +1,6 @@
  import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { BrowserRouter, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
 import ProductPage from './pages/ProductPage';
@@ -18,6 +18,7 @@ import AdminProductsPage from './pages/AdminProductsPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import { useUser } from './store/user';
 import { useCart } from './store/cart';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -25,6 +26,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ContactPage from './pages/ContactPage';
 import ProductCardDemo from './pages/ProductCardDemo';
 import AboutPage from './pages/AboutPage';
+import SearchBar from './components/SearchBar';
 
 function UserAvatar() {
 	const user = useUser((s) => s.user);
@@ -94,15 +96,14 @@ function App() {
 
 	return (
 		<BrowserRouter>
+			<ScrollToTop />
 			<div>
 				<header className="header">
 					<div className="container">
 						<Link to="/" className="brand">Makiti</Link>
-						<div className="search">
-							<input placeholder="Rechercher un produit, une boutique..." />
-						</div>
+						<SearchBar />
 						<nav className="nav">
-							<NavLink to="/" className={({ isActive }) => (isActive ? 'active' : '')}>Accueil</NavLink>
+							<NavLink to="/" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Accueil</NavLink>
 							<NavLink to="/catalog" className={({ isActive }) => (isActive ? 'active' : '')}>Catalogue</NavLink>
 							<NavLink to="/cart" className={({ isActive }) => (isActive ? 'active' : '')} title="Panier" aria-label="Panier" style={{ position:'relative', display:'inline-flex', alignItems:'center', gap:6, background:'#ffffff', border:'1px solid #e5e7eb', borderRadius:9999, padding:'6px 10px' }}>
 								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -166,6 +167,7 @@ function App() {
 								<Route path="users" element={<AdminUsersPage />} />
 								<Route path="vendors" element={<AdminVendorsPage />} />
 								<Route path="products" element={<AdminProductsPage />} />
+								<Route path="categories" element={<AdminCategoriesPage />} />
                                 <Route path="orders" element={<AdminOrdersPage />} />
                                 <Route path="settings" element={<AdminSettingsPage />} />
                                 <Route path="analytics" element={<AdminAnalyticsPage />} />
@@ -184,6 +186,7 @@ function App() {
 				<div className="footer-col">
 				<h4 className="footer-title">Découvrir</h4>
 				<ul className="footer-links">
+				<li><Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Accueil</Link></li>
 				<li><Link to="/catalog">Catalogue</Link></li>
 				<li><Link to="/cart">Panier</Link></li>
 				<li><Link to="/register">Devenir vendeur</Link></li>
@@ -217,6 +220,17 @@ function App() {
 				</div>
 				</BrowserRouter>
 	);
+}
+
+// Composant pour remonter en haut à chaque changement de page
+function ScrollToTop() {
+	const { pathname } = useLocation();
+
+	useEffect(() => {
+		window.scrollTo(0, 0);
+	}, [pathname]);
+
+	return null;
 }
 
 export default App;

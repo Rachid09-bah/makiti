@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../store/cart';
 import { Trash2, Plus, Minus } from 'lucide-react';
+import PaymentModal from '../components/PaymentModal';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
   const updateQty = useCart((s) => s.updateQty);
   const removeItem = useCart((s) => s.removeItem);
   const clear = useCart((s) => s.clear);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const formatPrice = (n: number) => `${n.toLocaleString('fr-FR')} GNF`;
   const subtotal = items.reduce((acc, it) => acc + it.price * it.qty, 0);
@@ -17,6 +21,20 @@ export default function CartPage() {
     } else {
       updateQty(id, qty);
     }
+  };
+
+  const handleCheckout = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handlePayment = (method: string, data: any) => {
+    toast.success(`Paiement ${method} en cours...`);
+    setShowPaymentModal(false);
+    
+    setTimeout(() => {
+      toast.success('Paiement réussi ! Commande confirmée.');
+      clear();
+    }, 2000);
   };
 
   return (
@@ -101,7 +119,7 @@ export default function CartPage() {
               <span style={{ fontWeight: 800 }}>{formatPrice(subtotal)}</span>
             </div>
             <div style={{ marginTop: 12 }}>
-              <button className="btn" style={{ width: '100%', justifyContent: 'center' }}>Passer la commande</button>
+              <button onClick={handleCheckout} className="btn" style={{ width: '100%', justifyContent: 'center' }}>Passer la commande</button>
             </div>
             <div style={{ marginTop: 8, textAlign: 'center' }}>
               <Link to="/catalog" className="btn outline small" style={{ justifyContent: 'center' }}>Continuer vos achats</Link>
@@ -109,6 +127,13 @@ export default function CartPage() {
           </div>
         </div>
       )}
+      
+      <PaymentModal 
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        total={subtotal}
+        onPayment={handlePayment}
+      />
     </div>
   );
 }

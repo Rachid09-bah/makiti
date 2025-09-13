@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useUser } from '../store/user';
-import { Menu, Bell, User as UserIcon, LayoutDashboard, Users, Store, Package, ShoppingCart, LineChart, Settings } from 'lucide-react';
+import { Menu, Bell, User as UserIcon, LayoutDashboard, Users, Store, Package, ShoppingCart, LineChart, Settings, Tags } from 'lucide-react';
 
 export default function AdminLayout() {
 	const loc = useLocation();
@@ -16,6 +16,7 @@ export default function AdminLayout() {
 		{ path: '/admin/users', label: 'Utilisateurs', Icon: Users },
 		{ path: '/admin/vendors', label: 'Vendeurs', Icon: Store },
 		{ path: '/admin/products', label: 'Produits', Icon: Package },
+		{ path: '/admin/categories', label: 'Catégories', Icon: Tags },
 		{ path: '/admin/orders', label: 'Commandes', Icon: ShoppingCart },
 		{ path: '/admin/analytics', label: 'Analytics', Icon: LineChart },
 		{ path: '/admin/settings', label: 'Paramètres', Icon: Settings }

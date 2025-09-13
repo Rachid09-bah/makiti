@@ -358,6 +358,9 @@ adminRouter.patch('/products/:id', upload.single('image'), async (req, res) => {
 			if (!v) return res.status(404).json({ message: 'Vendeur introuvable' });
 			product.vendorId = v._id as any;
 		}
+		if (req.body?.categoryId != null) {
+			product.categoryId = req.body.categoryId ? String(req.body.categoryId) : undefined;
+		}
 
 		// Image update
 		const file = (req as any).file as any;
@@ -394,6 +397,7 @@ adminRouter.patch('/products/:id', upload.single('image'), async (req, res) => {
 			stock: product.stock,
 			status: product.status,
 			isRecommended: product.isRecommended,
+			categoryId: product.categoryId,
 			createdAt: product.createdAt
 		});
 	} catch (err: any) {
@@ -415,7 +419,7 @@ adminRouter.delete('/products/:id', async (req, res) => {
 });
 
 adminRouter.get('/products', async (_req, res) => {
-	const products = await Product.find({}).select('vendorId title price stock status isRecommended createdAt');
+	const products = await Product.find({}).select('vendorId title price stock status isRecommended categoryId createdAt');
 	res.json(products);
 });
 

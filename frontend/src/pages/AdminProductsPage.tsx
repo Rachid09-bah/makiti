@@ -3,28 +3,15 @@ import { api } from '../lib/api';
 import { Package, Search, Plus } from 'lucide-react';
 
 interface VendorOption { id: string; name: string; }
-interface ProductItem { id: string; vendorId: string; title: string; price: number; stock: number; status: string; isRecommended?: boolean; createdAt: string; }
+interface ProductItem { id: string; vendorId: string; title: string; price: number; stock: number; status: string; isRecommended?: boolean; createdAt: string; categoryId?: string; }
+interface Category { _id: string; name: string; slug: string; }
 
-const CATEGORIES = [
-  'Leppi & Tenues',
-  'Bazin & Tissus',
-  'Chaussures',
-  'Artisanat & Décoration',
-  'Bijoux & Accessoires',
-  'Cosmétiques naturels',
-  'Épices & Agroalimentaire',
-  'Paniers & Vannerie'
-];
 
-function buildTags(base: string, category: string, local: boolean) {
-  const parts = [base?.trim(), category?.trim(), local ? 'local' : ''].filter(Boolean) as string[];
-  // éviter duplications simples
-  return Array.from(new Set(parts)).join(',');
-}
 
 export default function AdminProductsPage() {
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -41,7 +28,7 @@ export default function AdminProductsPage() {
     description: '',
     tags: '',
     image: '',
-    category: '',
+    categoryId: '',
     local: false,
     isRecommended: false,
     status: 'active' as 'active' | 'inactive' | 'pending',
@@ -58,7 +45,7 @@ export default function AdminProductsPage() {
     description: '',
     tags: '',
     image: '',
-    category: '',
+    categoryId: '',
     local: false,
     isRecommended: false,
     status: 'active' as 'active' | 'inactive' | 'pending',
@@ -73,12 +60,14 @@ export default function AdminProductsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [vendorsRes, productsRes] = await Promise.all([
+        const [vendorsRes, productsRes, categoriesRes] = await Promise.all([
           api.get<any[]>('/admin/vendors'),
           api.get<any[]>('/admin/products'),
+          api.get<Category[]>('/categories'),
         ]);
         if (mounted) {
           setVendors(vendorsRes.data.map(v => ({ id: v.id || v._id, name: v.name })));
+          setCategories(categoriesRes.data);
           setProducts(productsRes.data.map((p: any) => ({
             id: p.id || p._id,
             vendorId: String(p.vendorId),
@@ -88,6 +77,7 @@ export default function AdminProductsPage() {
             status: p.status,
             isRecommended: !!p.isRecommended,
             createdAt: p.createdAt,
+            categoryId: p.categoryId,
           })));
         }
       } catch (err: any) {
@@ -110,7 +100,7 @@ export default function AdminProductsPage() {
       description: '',
       tags: '',
       image: '',
-      category: '',
+      categoryId: '',
       local: false,
       status: (p.status as any) || 'active',
       isRecommended: !!p.isRecommended,
@@ -132,9 +122,8 @@ export default function AdminProductsPage() {
       if (editForm.description) fd.append('description', editForm.description);
       if (editForm.status) fd.append('status', editForm.status);
       fd.append('isRecommended', String(editForm.isRecommended));
-      // composer les tags (tags saisis + catégorie + local)
-      const composedTags = buildTags(editForm.tags, editForm.category, editForm.local);
-      if (composedTags) fd.append('tags', composedTags);
+      if (editForm.tags) fd.append('tags', editForm.tags);
+      if (editForm.categoryId) fd.append('categoryId', editForm.categoryId);
       if (editFile) fd.append('image', editFile);
       if (!editFile && editForm.image) fd.append('image', editForm.image);
       const res = await api.patch(`/admin/products/${editId}`, fd);
@@ -171,14 +160,14 @@ export default function AdminProductsPage() {
       if (form.description) fd.append('description', form.description);
       if (form.status) fd.append('status', form.status);
       fd.append('isRecommended', String(form.isRecommended));
-      const composedTags = buildTags(form.tags, form.category, form.local);
-      if (composedTags) fd.append('tags', composedTags);
+      if (form.tags) fd.append('tags', form.tags);
+      if (form.categoryId) fd.append('categoryId', form.categoryId);
       if (file) fd.append('image', file);
       if (!file && form.image) fd.append('image', form.image); // fallback URL
       const res = await api.post('/admin/products', fd);
       setProducts(prev => [res.data as ProductItem, ...prev]);
       setShowCreate(false);
-      setForm({ vendorId: '', title: '', price: '', stock: '', description: '', tags: '', image: '', category: '', local: false, isRecommended: false, status: 'active' });
+      setForm({ vendorId: '', title: '', price: '', stock: '', description: '', tags: '', image: '', categoryId: '', local: false, isRecommended: false, status: 'active' });
       setFile(null);
     } catch (err: any) {
       setCreateError(err?.response?.data?.message || 'Erreur lors de la création du produit');
@@ -220,7 +209,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="field">
               <label>Prix</label>
-              <input type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
             </div>
             <div className="field">
               <label>Stock</label>
@@ -233,9 +222,9 @@ export default function AdminProductsPage() {
             </div>
             <div className="field">
               <label>Catégorie</label>
-              <select className="filter-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+              <select className="filter-select" value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}>
                 <option value="">Sélectionner</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
               </select>
             </div>
             <div className="field">
@@ -290,7 +279,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="field">
               <label>Prix</label>
-              <input type="number" step="0.01" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} />
             </div>
             <div className="field">
               <label>Stock</label>
@@ -303,9 +292,9 @@ export default function AdminProductsPage() {
             </div>
             <div className="field">
               <label>Catégorie</label>
-              <select className="filter-select" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+              <select className="filter-select" value={editForm.categoryId} onChange={e => setEditForm({ ...editForm, categoryId: e.target.value })}>
                 <option value="">(inchangé)</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
               </select>
             </div>
             <div className="field">
